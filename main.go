@@ -12,9 +12,11 @@ import (
 )
 
 var monochromeMode bool
+var onlyFilesystems bool
 
 func main() {
 	flag.BoolVar(&monochromeMode, "m", false, "Display output in monochrome without colors")
+	flag.BoolVar(&onlyFilesystems, "d", false, "Display only file systems and hide RAM usage") // New flag definition
 	flag.Parse()
 
 	mounts, err := mountinfo.GetMounts(nil)
@@ -47,8 +49,8 @@ func main() {
 		"fuse.gvfsd-fuse": true, // Gnome virtual file system
 		"fuse.portal":     true, // Gnome portal
 
-		"devpts":                                                  true, // Pseudo-filesystem for terminals
-		"selinuxfs":                                               true, // SELinux filesystem
+		"devpts":    true, // Pseudo-filesystem for terminals
+		"selinuxfs": true, // SELinux filesystem
 	}
 
 	for _, m := range mounts {
@@ -79,27 +81,23 @@ func main() {
 
 	}
 
+	// Add RAM gauge (conditionally)
+	if !onlyFilesystems { // Check if the -d flag is NOT set
+		v, err := mem.VirtualMemory()
 
+		if err != nil {
 
-	// Add RAM gauge
+			log.Printf("Failed to get virtual memory information: %v", err)
 
-	v, err := mem.VirtualMemory()
+		} else {
 
-	if err != nil {
+			gauge, color := generateGauge(v.UsedPercent, 30, monochromeMode)
 
-		log.Printf("Failed to get virtual memory information: %v", err)
+			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, "\033[0m")
 
-	} else {
-
-		gauge, color := generateGauge(v.UsedPercent, 30, monochromeMode)
-
-		fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, "\033[0m")
-
+		}
 	}
-
 }
-
-
 
 // generateGauge creates a textual gauge representing disk usage with color coding.
 
@@ -133,39 +131,28 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 
 	}
 
-
-
 	const ( // ANSI escape codes for colors
 
-		colorGreen  = "\033[32m"
+		colorGreen = "\033[32m"
 
 		colorYellow = "\033[33m"
 
-		colorRed    = "\033[31m"
+		colorRed = "\033[31m"
 
-		colorReset  = "\033[0m"
-
+		colorReset = "\033[0m"
 	)
-
-
 
 	var gaugeBuilder strings.Builder
 
 	gaugeBuilder.WriteString("[")
 
-
-
 	numFilled := int((usage / 100.0) * float64(width))
-
-
 
 	for i := 0; i < width; i++ {
 
 		// Determine the percentage for the current segment
 
 		segmentEndPercentage := (float64(i+1) / float64(width)) * 100
-
-
 
 		var segmentColor string
 
@@ -183,8 +170,6 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 
 		}
 
-
-
 		if i < numFilled {
 
 			gaugeBuilder.WriteString(segmentColor + "#" + colorReset)
@@ -198,8 +183,6 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 	}
 
 	gaugeBuilder.WriteString("]")
-
-
 
 	var overallColor string
 
@@ -217,13 +200,9 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 
 	}
 
-
-
 	return gaugeBuilder.String(), overallColor
 
 }
-
-
 
 // byteCountToHumanReadable converts a byte count to a human-readable string (e.g., 10GB, 2.5MB)
 func byteCountToHumanReadable(b uint64) string {
