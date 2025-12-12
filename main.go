@@ -13,6 +13,7 @@ import (
 
 var monochromeMode bool
 var onlyFilesystems bool
+var endColor string
 
 func main() {
 	flag.BoolVar(&monochromeMode, "m", false, "Display output in monochrome without colors")
@@ -74,134 +75,79 @@ func main() {
 			}
 
 			gauge, color := generateGauge(usagePercent, 30, monochromeMode)
-
-			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, "\033[0m")
-
+			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, endColor)
 		}
-
 	}
 
 	// Add RAM gauge (conditionally)
 	if !onlyFilesystems { // Check if the -d flag is NOT set
 		v, err := mem.VirtualMemory()
-
 		if err != nil {
-
 			log.Printf("Failed to get virtual memory information: %v", err)
-
 		} else {
-
-			gauge, color := generateGauge(v.UsedPercent, 30, monochromeMode)
-
-			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, "\033[0m")
-
+			gauge, color := generateGauge(v.UsedPercent, 30, monochromeMode) // fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, "\033[0m")*
+			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, endColor)
 		}
 	}
 }
 
 // generateGauge creates a textual gauge representing disk usage with color coding.
-
 func generateGauge(usage float64, width int, monochrome bool) (string, string) {
-
 	if monochrome {
-
 		var gaugeBuilder strings.Builder
-
 		gaugeBuilder.WriteString("[")
-
 		numFilled := int((usage / 100.0) * float64(width))
-
 		for i := 0; i < width; i++ {
-
 			if i < numFilled {
-
 				gaugeBuilder.WriteString("#")
-
 			} else {
-
 				gaugeBuilder.WriteString("-")
-
 			}
-
 		}
-
 		gaugeBuilder.WriteString("]")
-
+		endColor = ""
 		return gaugeBuilder.String(), ""
-
 	}
 
 	const ( // ANSI escape codes for colors
-
-		colorGreen = "\033[32m"
-
+		colorGreen  = "\033[32m"
 		colorYellow = "\033[33m"
-
-		colorRed = "\033[31m"
-
-		colorReset = "\033[0m"
+		colorRed    = "\033[31m"
+		colorReset  = "\033[0m"
 	)
 
 	var gaugeBuilder strings.Builder
-
 	gaugeBuilder.WriteString("[")
-
 	numFilled := int((usage / 100.0) * float64(width))
-
 	for i := 0; i < width; i++ {
-
 		// Determine the percentage for the current segment
-
 		segmentEndPercentage := (float64(i+1) / float64(width)) * 100
-
 		var segmentColor string
-
 		if segmentEndPercentage <= 50 {
-
 			segmentColor = colorGreen
-
 		} else if segmentEndPercentage <= 80 {
-
 			segmentColor = colorYellow
-
 		} else {
-
 			segmentColor = colorRed
-
 		}
-
 		if i < numFilled {
-
 			gaugeBuilder.WriteString(segmentColor + "#" + colorReset)
-
 		} else {
-
 			gaugeBuilder.WriteString("-")
-
 		}
-
 	}
 
-	gaugeBuilder.WriteString("]")
-
+	gaugeBuilder.WriteString("]" + colorReset)
 	var overallColor string
-
 	if usage < 50 {
-
 		overallColor = colorGreen
-
 	} else if usage < 80 {
-
 		overallColor = colorYellow
-
 	} else {
-
 		overallColor = colorRed
-
 	}
-
+	endColor = colorReset
 	return gaugeBuilder.String(), overallColor
-
 }
 
 // byteCountToHumanReadable converts a byte count to a human-readable string (e.g., 10GB, 2.5MB)
