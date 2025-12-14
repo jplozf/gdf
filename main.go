@@ -4,16 +4,21 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"runtime"
 	"strings"
 	"syscall"
 
 	"github.com/moby/sys/mountinfo"
+	"github.com/shirou/gopsutil/v3/load" // Added for load.Avg()
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
 var monochromeMode bool
 var onlyFilesystems bool
-var endColor string
+
+// Removed global endColor
+
+const colorReset = "\033[0m" // Define colorReset locally
 
 func main() {
 	flag.BoolVar(&monochromeMode, "m", false, "Display output in monochrome without colors")
@@ -53,7 +58,21 @@ func main() {
 		"devpts":    true, // Pseudo-filesystem for terminals
 		"selinuxfs": true, // SELinux filesystem
 	}
-
+	// --- CPU Load Calculation ---
+	numCPU := runtime.NumCPU()
+	cpuLoadAvg, loadErr := load.Avg() // Renamed err to loadErr to avoid conflict
+	var cpu1Percent, cpu5Percent, cpu15Percent float64
+	if loadErr != nil {
+		log.Printf("Failed to get CPU load average: %v", loadErr)
+	} else {
+		// Ensure we don't divide by zero if numCPU is 0 (though unlikely)
+		if numCPU > 0 {
+			cpu1Percent = (cpuLoadAvg.Load1 / float64(numCPU)) * 100
+			cpu5Percent = (cpuLoadAvg.Load5 / float64(numCPU)) * 100
+			cpu15Percent = (cpuLoadAvg.Load15 / float64(numCPU)) * 100
+		}
+	}
+	// --- End CPU Load Calculation ---
 	for _, m := range mounts {
 		if !ignoredFSTypes[m.FSType] && !(strings.HasPrefix(m.FSType, "fuse.") && strings.Contains(m.FSType, "AppImage")) {
 			var stat syscall.Statfs_t
@@ -75,7 +94,7 @@ func main() {
 			}
 
 			gauge, color := generateGauge(usagePercent, 30, monochromeMode)
-			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, endColor)
+			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
 		}
 	}
 
@@ -86,7 +105,23 @@ func main() {
 			log.Printf("Failed to get virtual memory information: %v", err)
 		} else {
 			gauge, color := generateGauge(v.UsedPercent, 30, monochromeMode) // fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, "\033[0m")*
-			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, endColor)
+			fmt.Printf("%-25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, colorReset)
+		}
+
+		// CPU Load Gauges
+		// Only print CPU gauges if load.Avg() was successful and numCPU > 0
+		if loadErr == nil && numCPU > 0 {
+			// CPU 1 min
+			gauge1, color1 := generateGauge(cpu1Percent, 30, monochromeMode)
+			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU 1mn", "", gauge1, color1, cpu1Percent, colorReset) // No size for CPU
+
+			// CPU 5 min
+			gauge5, color5 := generateGauge(cpu5Percent, 30, monochromeMode)
+			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU 5mn", "", gauge5, color5, cpu5Percent, colorReset)
+
+			// CPU 15 min
+			gauge15, color15 := generateGauge(cpu15Percent, 30, monochromeMode)
+			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU 15mn", "", gauge15, color15, cpu15Percent, colorReset)
 		}
 	}
 }
@@ -105,7 +140,6 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 			}
 		}
 		gaugeBuilder.WriteString("]")
-		endColor = ""
 		return gaugeBuilder.String(), ""
 	}
 
@@ -146,7 +180,6 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 	} else {
 		overallColor = colorRed
 	}
-	endColor = colorReset
 	return gaugeBuilder.String(), overallColor
 }
 
