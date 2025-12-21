@@ -4,15 +4,13 @@ package main
 // IMPORTS
 // ****************************************************************************
 import (
+	"flag"
 	"fmt"
 	"log"
 	runtime "runtime"
 	"strings"
 	"syscall"
 	"time"
-
-	// "time"
-	"flag"
 
 	"github.com/moby/sys/mountinfo"
 	"github.com/shirou/gopsutil/load"
@@ -87,7 +85,7 @@ func displayMetrics(showDisks, showRAM, showCPU bool) {
 	if showDisks {
 		mounts, err = mountinfo.GetMounts(nil)
 		if err != nil {
-			log.Printf("Failed to get mount information: %v", err) // Changed from Fatalf to Logf to allow other metrics to be displayed
+			log.Printf("Failed to get mount information: %v", err)
 		}
 	}
 
@@ -154,7 +152,6 @@ func main() {
 	flag.BoolVar(&flagCPU, "c", false, "Display CPU metrics")
 	flag.BoolVar(&flagAll, "a", false, "Display all metrics")
 	flag.IntVar(&flagWatch, "w", 0, "Watch every n seconds")
-	// Removed watchInterval flag as the application will now exit after displaying metrics once.
 	flag.Parse()
 
 	// Determine which metrics to display based on flags
