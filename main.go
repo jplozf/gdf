@@ -167,7 +167,7 @@ func main() {
 	flag.BoolVar(&flagFilesystems, "d", false, "Display file systems metrics")
 	flag.BoolVar(&flagRAM, "r", false, "Display RAM metrics")
 	flag.BoolVar(&flagCPU, "c", false, "Display CPU metrics")
-	flag.BoolVar(&flagBattery, "b", false, "Display battery metrics")
+	flag.BoolVar(&flagBattery, "b", false, "Display battery metrics (if any)")
 	flag.BoolVar(&flagAll, "a", false, "Display all metrics")
 	flag.IntVar(&flagWatch, "w", 0, "Watch every n seconds")
 	flag.Parse()
