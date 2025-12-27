@@ -7,7 +7,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	runtime "runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,6 +28,7 @@ var (
 	flagRAM         bool
 	flagCPU         bool
 	flagAll         bool
+	flagBattery     bool
 	flagWatch       int
 )
 
@@ -62,7 +65,7 @@ const colorReset = "\033[0m"
 // ****************************************************************************
 // displayMetrics()
 // ****************************************************************************
-func displayMetrics(showDisks, showRAM, showCPU bool) {
+func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 	// --- CPU Load Calculation ---
 	numCPU := runtime.NumCPU()
 	cpuLoadAvg, loadErr := load.Avg() // Corrected to use load.Avg()
@@ -140,6 +143,19 @@ func displayMetrics(showDisks, showRAM, showCPU bool) {
 			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU", "15 mn", gauge15, color15, cpu15Percent, colorReset)
 		}
 	}
+
+	// Print Battery Metrics
+	if showBattery {
+		dir := "/sys/class/power_supply/BAT0"
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			// fmt.Println(dir, "does not exist")
+		} else {
+			dat, _ := os.ReadFile(dir)
+			val, _ := strconv.ParseFloat(strings.TrimSpace(string(dat)), 64)
+			gauge, color := generateGauge(val, 30, flagMonochrome)
+			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "Battery", 100, gauge, color, val, colorReset)
+		}
+	}
 }
 
 // ****************************************************************************
@@ -150,38 +166,42 @@ func main() {
 	flag.BoolVar(&flagFilesystems, "d", false, "Display file systems metrics")
 	flag.BoolVar(&flagRAM, "r", false, "Display RAM metrics")
 	flag.BoolVar(&flagCPU, "c", false, "Display CPU metrics")
+	flag.BoolVar(&flagBattery, "b", false, "Display battery metrics")
 	flag.BoolVar(&flagAll, "a", false, "Display all metrics")
 	flag.IntVar(&flagWatch, "w", 0, "Watch every n seconds")
 	flag.Parse()
 
 	// Determine which metrics to display based on flags
-	var showDisks, showRAM, showCPU bool
+	var showDisks, showRAM, showCPU, showBattery bool
 
 	// If -a flag is present, show all metrics
 	if flagAll {
 		showDisks = true
 		showRAM = true
 		showCPU = true
+		showBattery = true
 	} else {
 		// If -a is not present, use the specific flags.
 		showDisks = flagFilesystems
 		showRAM = flagRAM
 		showCPU = flagCPU
+		showBattery = flagBattery
 
 		// If no specific flags were set (-d, -r, -c), default to showing all metrics.
-		if !flagFilesystems && !flagRAM && !flagCPU {
+		if !flagFilesystems && !flagRAM && !flagCPU && !flagBattery {
 			showDisks = true
 			showRAM = true
 			showCPU = true
+			showBattery = true
 		}
 	}
 
 	if flagWatch == 0 {
-		displayMetrics(showDisks, showRAM, showCPU)
+		displayMetrics(showDisks, showRAM, showCPU, showBattery)
 	} else {
-		watchMetrics(showDisks, showRAM, showCPU)
+		watchMetrics(showDisks, showRAM, showCPU, showBattery)
 		for _ = range time.Tick(time.Duration(flagWatch) * time.Second) {
-			watchMetrics(showDisks, showRAM, showCPU)
+			watchMetrics(showDisks, showRAM, showCPU, showBattery)
 		}
 	}
 }
@@ -189,10 +209,10 @@ func main() {
 // ****************************************************************************
 // watchMetrics()
 // ****************************************************************************
-func watchMetrics(showDisks, showRAM, showCPU bool) {
+func watchMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 	fmt.Print("\033[H\033[2J") // Clear screen before
 	fmt.Printf("Refreshing every %d second(s). Press Crl+C to exit.\n", flagWatch)
-	displayMetrics(showDisks, showRAM, showCPU)
+	displayMetrics(showDisks, showRAM, showCPU, showBattery)
 }
 
 // ****************************************************************************
