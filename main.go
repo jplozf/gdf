@@ -112,8 +112,8 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 					usagePercent = (float64(usedSpace) / float64(totalSpace)) * 100
 				}
 
-				gauge, color := generateGauge(usagePercent, 30, flagMonochrome)
-				fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
+				gauge, color := generateGauge(usagePercent, 30, flagMonochrome, false)
+				fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
 			}
 		}
 	}
@@ -124,8 +124,8 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 		if err != nil {
 			log.Printf("Failed to get virtual memory information: %v", err)
 		} else {
-			gauge, color := generateGauge(v.UsedPercent, 30, flagMonochrome)
-			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, colorReset)
+			gauge, color := generateGauge(v.UsedPercent, 30, flagMonochrome, false)
+			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, colorReset)
 		}
 	}
 
@@ -133,14 +133,14 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 	if showCPU {
 		// Only print CPU gauges if load.Avg() was successful and numCPU > 0
 		if loadErr == nil && numCPU > 0 {
-			gauge1, color1 := generateGauge(cpu1Percent, 30, flagMonochrome)
-			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU", "1 mn", gauge1, color1, cpu1Percent, colorReset) // No size for CPU
+			gauge1, color1 := generateGauge(cpu1Percent, 30, flagMonochrome, false)
+			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "CPU", "1 mn", gauge1, color1, cpu1Percent, colorReset) // No size for CPU
 
-			gauge5, color5 := generateGauge(cpu5Percent, 30, flagMonochrome)
-			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU", "5 mn", gauge5, color5, cpu5Percent, colorReset)
+			gauge5, color5 := generateGauge(cpu5Percent, 30, flagMonochrome, false)
+			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "CPU", "5 mn", gauge5, color5, cpu5Percent, colorReset)
 
-			gauge15, color15 := generateGauge(cpu15Percent, 30, flagMonochrome)
-			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "CPU", "15 mn", gauge15, color15, cpu15Percent, colorReset)
+			gauge15, color15 := generateGauge(cpu15Percent, 30, flagMonochrome, false)
+			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "CPU", "15 mn", gauge15, color15, cpu15Percent, colorReset)
 		}
 	}
 
@@ -150,10 +150,11 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			// fmt.Println(dir, "does not exist")
 		} else {
-			dat, _ := os.ReadFile(dir)
+			dat, _ := os.ReadFile(dir + "/capacity")
 			val, _ := strconv.ParseFloat(strings.TrimSpace(string(dat)), 64)
-			gauge, color := generateGauge(val, 30, flagMonochrome)
-			fmt.Printf("% -25s %10s %s %s%5.2f%%%s\n", "Battery", 100, gauge, color, val, colorReset)
+			status, _ := os.ReadFile(dir + "/status")
+			gauge, color := generateGauge(val, 30, flagMonochrome, true)
+			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "Battery", strings.TrimSpace(string(status)), gauge, color, val, colorReset)
 		}
 	}
 }
@@ -219,7 +220,7 @@ func watchMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 // generateGauge()
 // ****************************************************************************
 // generateGauge creates a textual gauge representing disk usage with color coding.
-func generateGauge(usage float64, width int, monochrome bool) (string, string) {
+func generateGauge(usage float64, width int, monochrome bool, red0 bool) (string, string) {
 	if monochrome {
 		var gaugeBuilder strings.Builder
 		gaugeBuilder.WriteString("[")
@@ -249,12 +250,22 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 		// Determine the percentage for the current segment
 		segmentEndPercentage := (float64(i+1) / float64(width)) * 100
 		var segmentColor string
-		if segmentEndPercentage <= 50 {
-			segmentColor = colorGreen
-		} else if segmentEndPercentage <= 80 {
-			segmentColor = colorYellow
+		if !red0 {
+			if segmentEndPercentage <= 50 {
+				segmentColor = colorGreen
+			} else if segmentEndPercentage <= 80 {
+				segmentColor = colorYellow
+			} else {
+				segmentColor = colorRed
+			}
 		} else {
-			segmentColor = colorRed
+			if segmentEndPercentage <= 20 {
+				segmentColor = colorRed
+			} else if segmentEndPercentage <= 80 {
+				segmentColor = colorYellow
+			} else {
+				segmentColor = colorGreen
+			}
 		}
 		if i < numFilled {
 			gaugeBuilder.WriteString(segmentColor + "#" + colorReset)
@@ -265,12 +276,22 @@ func generateGauge(usage float64, width int, monochrome bool) (string, string) {
 
 	gaugeBuilder.WriteString("]" + colorReset)
 	var overallColor string
-	if usage < 50 {
-		overallColor = colorGreen
-	} else if usage < 80 {
-		overallColor = colorYellow
+	if !red0 {
+		if usage < 50 {
+			overallColor = colorGreen
+		} else if usage < 80 {
+			overallColor = colorYellow
+		} else {
+			overallColor = colorRed
+		}
 	} else {
-		overallColor = colorRed
+		if usage < 20 {
+			overallColor = colorRed
+		} else if usage < 80 {
+			overallColor = colorYellow
+		} else {
+			overallColor = colorRed
+		}
 	}
 	return gaugeBuilder.String(), overallColor
 }
