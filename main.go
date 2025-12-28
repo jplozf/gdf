@@ -294,7 +294,7 @@ func generateGauge(usage float64, width int, monochrome bool, red0 bool) (string
 		} else if usage < 80 {
 			overallColor = colorYellow
 		} else {
-			overallColor = colorRed
+			overallColor = colorGreen
 		}
 	}
 	return gaugeBuilder.String(), overallColor
