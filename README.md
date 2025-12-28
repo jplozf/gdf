@@ -3,6 +3,7 @@
 A enhanced `df` command written in Go to get free space for all mounted disks, RAM, CPU and battery usage, displaying a textual gauge for each.
 ```
  ~/Projets/Go/jplozf/gdf>./gdf
+ 📊 gdf 0.11-3bcc7e6 - An enhanced df command
 /                                  1.0 TB [###########-------------------] 39.43%
 /boot                              1.0 GB [###########-------------------] 38.99%
 /home                              1.0 TB [###########-------------------] 39.43%
@@ -15,8 +16,9 @@ CPU                                  5 mn [#########---------------------] 31.69
 CPU                                 15 mn [########----------------------] 28.44%
 Battery                       Discharging [#######################-------] 77.00%
 ```
-By default, the gauges are displayed in color, as is the available RAM and CPU. These features can be modified using the following flags, which can be combined:
+By default, the gauges are displayed in color, as is the available RAM, CPU and battery usage (if any). These features can be modified using the following flags, which can be combined:
 ```
+📊 gdf 0.11-3bcc7e6 - An enhanced df command
 Usage of gdf:
   -a    Display all metrics
   -b    Display battery metrics (if any)

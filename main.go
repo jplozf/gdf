@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gdf/version"
 	"log"
 	"os"
 	runtime "runtime"
@@ -165,6 +166,7 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 // main()
 // ****************************************************************************
 func main() {
+	showVersion()
 	flag.BoolVar(&flagMonochrome, "m", false, "Display output in monochrome without colors")
 	flag.BoolVar(&flagFilesystems, "d", false, "Display file systems metrics")
 	flag.BoolVar(&flagRAM, "r", false, "Display RAM metrics")
@@ -317,3 +319,10 @@ func byteCountToHumanReadable(b uint64) string {
 }
 
 var numericUnits = []string{"kB", "MB", "GB", "TB", "PB", "EB"}
+
+// ****************************************************************************
+// showVersion()
+// ****************************************************************************
+func showVersion() {
+	fmt.Printf("📊 gdf %s - An enhanced df command\n", version.String())
+}
