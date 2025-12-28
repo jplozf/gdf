@@ -115,7 +115,7 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 					}
 
 					gauge, color := generateGauge(usagePercent, 30, flagMonochrome, false)
-					fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "🖫  "+m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
+					fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "🖫  "+m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
 				}
 			}
 		}
@@ -128,7 +128,7 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 			log.Printf("Failed to get virtual memory information: %v", err)
 		} else {
 			gauge, color := generateGauge(v.UsedPercent, 30, flagMonochrome, false)
-			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "🖴  RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, colorReset)
+			fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "🖴  RAM", byteCountToHumanReadable(v.Total), gauge, color, v.UsedPercent, colorReset)
 		}
 	}
 
@@ -137,13 +137,13 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 		// Only print CPU gauges if load.Avg() was successful and numCPU > 0
 		if loadErr == nil && numCPU > 0 {
 			gauge1, color1 := generateGauge(cpu1Percent, 30, flagMonochrome, false)
-			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "⚙  CPU", "1 mn", gauge1, color1, cpu1Percent, colorReset) // No size for CPU
+			fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "⚙  CPU", "1 mn", gauge1, color1, cpu1Percent, colorReset) // No size for CPU
 
 			gauge5, color5 := generateGauge(cpu5Percent, 30, flagMonochrome, false)
-			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "⚙  CPU", "5 mn", gauge5, color5, cpu5Percent, colorReset)
+			fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "⚙  CPU", "5 mn", gauge5, color5, cpu5Percent, colorReset)
 
 			gauge15, color15 := generateGauge(cpu15Percent, 30, flagMonochrome, false)
-			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "⚙  CPU", "15 mn", gauge15, color15, cpu15Percent, colorReset)
+			fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "⚙  CPU", "15 mn", gauge15, color15, cpu15Percent, colorReset)
 		}
 	}
 
@@ -157,7 +157,7 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 			val, _ := strconv.ParseFloat(strings.TrimSpace(string(dat)), 64)
 			status, _ := os.ReadFile(dir + "/status")
 			gauge, color := generateGauge(val, 30, flagMonochrome, true)
-			fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", "🗲  Battery", strings.TrimSpace(string(status)), gauge, color, val, colorReset)
+			fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "🗲  Battery", strings.TrimSpace(string(status)), gauge, color, val, colorReset)
 		}
 	}
 }
@@ -324,5 +324,5 @@ var numericUnits = []string{"kB", "MB", "GB", "TB", "PB", "EB"}
 // showVersion()
 // ****************************************************************************
 func showVersion() {
-	fmt.Printf("🗠  gdf %s - An enhanced df command\n", version.String())
+	fmt.Printf("🗠  gdf %s - An enhanced df command.\n", version.String())
 }
