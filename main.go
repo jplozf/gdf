@@ -107,13 +107,15 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 				freeSpace := stat.Bfree * blockSize
 				usedSpace := totalSpace - freeSpace
 
-				usagePercent := 0.0
-				if totalSpace > 0 {
-					usagePercent = (float64(usedSpace) / float64(totalSpace)) * 100
-				}
+				if totalSpace != 0 {
+					usagePercent := 0.0
+					if totalSpace > 0 {
+						usagePercent = (float64(usedSpace) / float64(totalSpace)) * 100
+					}
 
-				gauge, color := generateGauge(usagePercent, 30, flagMonochrome, false)
-				fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
+					gauge, color := generateGauge(usagePercent, 30, flagMonochrome, false)
+					fmt.Printf("% -25s %15s %s %s%5.2f%%%s\n", m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
+				}
 			}
 		}
 	}
