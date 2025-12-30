@@ -3,7 +3,8 @@
 A enhanced `df` command written in Go to get free space for all mounted disks, RAM, CPU and battery usage, displaying a textual gauge for each.
 ```
  ~/Projets/Go/jplozf/gdf>./gdf
-🗠  gdf 0.11-3bcc7e6 - An enhanced df command
+🗠  gdf 0.15-d8993cf - An enhanced df command.
+🖳  mintaka : linux fedora 43 (x86_64) / 6.17.12-300.fc43.x86_64 - Uptime 9 days, 2 hours, 14 minutes, 54 seconds
 🖫  /                                  1.0 TB [###########-------------------] 39.43%
 🖫  /boot                              1.0 GB [###########-------------------] 38.99%
 🖫  /home                              1.0 TB [###########-------------------] 39.43%
@@ -18,7 +19,7 @@ A enhanced `df` command written in Go to get free space for all mounted disks, R
 ```
 By default, the gauges are displayed in color, as is the available RAM, CPU and battery usage (if any). These features can be modified using the following flags, which can be combined:
 ```
-🗠 gdf 0.11-3bcc7e6 - An enhanced df command
+🗠 gdf 0.15-d8993cf - An enhanced df command.
 Usage of gdf:
   -a    Display all metrics
   -b    Display battery metrics (if any)
@@ -26,6 +27,7 @@ Usage of gdf:
   -d    Display file systems metrics
   -m    Display output in monochrome without colors
   -r    Display RAM metrics
+  -s    Display system info
   -w int
         Watch every n seconds
 ```

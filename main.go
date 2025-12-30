@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/moby/sys/mountinfo"
+	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
 )
@@ -30,6 +31,7 @@ var (
 	flagCPU         bool
 	flagAll         bool
 	flagBattery     bool
+	flagSystem      bool
 	flagWatch       int
 )
 
@@ -66,7 +68,7 @@ const colorReset = "\033[0m"
 // ****************************************************************************
 // displayMetrics()
 // ****************************************************************************
-func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
+func displayMetrics(showDisks, showRAM, showCPU, showBattery, showSystem bool) {
 	// --- CPU Load Calculation ---
 	numCPU := runtime.NumCPU()
 	cpuLoadAvg, loadErr := load.Avg() // Corrected to use load.Avg()
@@ -93,6 +95,13 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 		}
 	}
 
+	// Print System Info
+	if showSystem {
+		uptime, _ := host.Uptime()
+		osInfo, _ := host.Info()
+		fmt.Printf("🖳  %s : %s %s %s (%s) / %s - Uptime %s\n", osInfo.Hostname, osInfo.OS, osInfo.Platform, osInfo.PlatformVersion, osInfo.KernelArch, osInfo.KernelVersion, formatDuration(uptime))
+	}
+
 	// Print Disk Metrics
 	if showDisks {
 		for _, m := range mounts {
@@ -115,7 +124,7 @@ func displayMetrics(showDisks, showRAM, showCPU, showBattery bool) {
 					}
 
 					gauge, color := generateGauge(usagePercent, 30, flagMonochrome, false)
-					fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "🖫  "+m.Mountpoint, byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
+					fmt.Printf("% -25s %15s %s %s%6.2f%%%s\n", "🖫  "+truncateText(m.Mountpoint, 25), byteCountToHumanReadable(totalSpace), gauge, color, usagePercent, colorReset)
 				}
 			}
 		}
@@ -173,11 +182,12 @@ func main() {
 	flag.BoolVar(&flagCPU, "c", false, "Display CPU metrics")
 	flag.BoolVar(&flagBattery, "b", false, "Display battery metrics (if any)")
 	flag.BoolVar(&flagAll, "a", false, "Display all metrics")
+	flag.BoolVar(&flagSystem, "s", false, "Display system info")
 	flag.IntVar(&flagWatch, "w", 0, "Watch every n seconds")
 	flag.Parse()
 
 	// Determine which metrics to display based on flags
-	var showDisks, showRAM, showCPU, showBattery bool
+	var showDisks, showRAM, showCPU, showBattery, showSystem bool
 
 	// If -a flag is present, show all metrics
 	if flagAll {
@@ -185,12 +195,14 @@ func main() {
 		showRAM = true
 		showCPU = true
 		showBattery = true
+		showSystem = true
 	} else {
 		// If -a is not present, use the specific flags.
 		showDisks = flagFilesystems
 		showRAM = flagRAM
 		showCPU = flagCPU
 		showBattery = flagBattery
+		showSystem = flagSystem
 
 		// If no specific flags were set (-d, -r, -c), default to showing all metrics.
 		if !flagFilesystems && !flagRAM && !flagCPU && !flagBattery {
@@ -198,15 +210,16 @@ func main() {
 			showRAM = true
 			showCPU = true
 			showBattery = true
+			showSystem = true
 		}
 	}
 
 	if flagWatch == 0 {
-		displayMetrics(showDisks, showRAM, showCPU, showBattery)
+		displayMetrics(showDisks, showRAM, showCPU, showBattery, showSystem)
 	} else {
-		watchMetrics(showDisks, showRAM, showCPU, showBattery)
+		watchMetrics(showDisks, showRAM, showCPU, showBattery, showSystem)
 		for _ = range time.Tick(time.Duration(flagWatch) * time.Second) {
-			watchMetrics(showDisks, showRAM, showCPU, showBattery)
+			watchMetrics(showDisks, showRAM, showCPU, showBattery, showSystem)
 		}
 	}
 }
@@ -214,10 +227,10 @@ func main() {
 // ****************************************************************************
 // watchMetrics()
 // ****************************************************************************
-func watchMetrics(showDisks, showRAM, showCPU, showBattery bool) {
+func watchMetrics(showDisks, showRAM, showCPU, showBattery, showSystem bool) {
 	fmt.Print("\033[H\033[2J") // Clear screen before
 	fmt.Printf("Refreshing every %d second(s). Press Crl+C to exit.\n", flagWatch)
-	displayMetrics(showDisks, showRAM, showCPU, showBattery)
+	displayMetrics(showDisks, showRAM, showCPU, showBattery, showSystem)
 }
 
 // ****************************************************************************
@@ -325,4 +338,63 @@ var numericUnits = []string{"kB", "MB", "GB", "TB", "PB", "EB"}
 // ****************************************************************************
 func showVersion() {
 	fmt.Printf("🗠  gdf %s - An enhanced df command.\n", version.String())
+}
+
+// ****************************************************************************
+// truncateText()
+// ****************************************************************************
+func truncateText(s string, max int) string {
+	if len(s) > max {
+		r := 0
+		for i := range s {
+			r++
+			if r > max {
+				return s[:i]
+			}
+		}
+	}
+	return s
+}
+
+// ****************************************************************************
+// formatDuration()
+// ****************************************************************************
+func formatDuration(seconds uint64) string {
+	// Calculate days, hours, minutes, and remaining seconds
+	days := seconds / 86400
+	remainingSeconds := seconds % 86400
+
+	hours := remainingSeconds / 3600
+	remainingSeconds %= 3600
+
+	minutes := remainingSeconds / 60
+	seconds = remainingSeconds % 60
+
+	// Build the formatted string
+	var parts []string
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%d day%s", days, pluralize(days)))
+	}
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%d hour%s", hours, pluralize(hours)))
+	}
+	if minutes > 0 {
+		parts = append(parts, fmt.Sprintf("%d minute%s", minutes, pluralize(minutes)))
+	}
+	if seconds > 0 || len(parts) == 0 {
+		parts = append(parts, fmt.Sprintf("%d second%s", seconds, pluralize(seconds)))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// ****************************************************************************
+// pluralize()
+// ****************************************************************************
+// Helper function to handle pluralization
+func pluralize(n uint64) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
